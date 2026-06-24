@@ -11,6 +11,7 @@
         BookOpen
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
+    import { toast } from '$lib/stores/toast';
 
     // State for selected day
     let activeDay = $state('Senin');
@@ -64,7 +65,7 @@
         
         <div class="flex items-center space-x-3">
             <button 
-                onclick={() => alert('Link jadwal berhasil disalin ke clipboard!')}
+                onclick={() => toast.add('Link jadwal berhasil disalin ke clipboard!', 'success')}
                 class="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all"
             >
                 <Share2 class="w-4 h-4 mr-2" />
@@ -172,7 +173,10 @@
                     </p>
                 </div>
             </div>
-            <button class="bg-white text-indigo-600 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors shadow-md">
+            <button 
+                onclick={() => toast.add('Mengalihkan ke layanan akademik...', 'info')}
+                class="bg-white text-indigo-600 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors shadow-md"
+            >
                 Hubungi Akademik
             </button>
         </div>

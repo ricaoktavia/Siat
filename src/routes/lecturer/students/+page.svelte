@@ -12,6 +12,7 @@
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
     import { X, Phone, MessageSquare, ExternalLink, Calendar, BookOpen } from 'lucide-svelte';
+    import { toast } from '$lib/stores/toast';
 
     let { data } = $props();
     let searchQuery = $state('');
@@ -53,7 +54,7 @@
         </div>
         
         <button 
-            onclick={() => alert('Data Mahasiswa Wali berhasil diekspor ke Excel!')}
+            onclick={() => toast.add('Data Mahasiswa Wali berhasil diekspor ke Excel!', 'success')}
             class="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all"
         >
             <Download class="w-4 h-4 mr-2" />
@@ -264,7 +265,7 @@
                 </a>
 
                 <button 
-                    onclick={() => alert('Membuka WhatsApp Web...')}
+                    onclick={() => toast.add('Membuka WhatsApp Web...', 'info')}
                     class="w-full flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-emerald-300 hover:bg-emerald-50 transition-all group"
                 >
                     <div class="flex items-center">

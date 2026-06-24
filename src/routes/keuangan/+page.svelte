@@ -16,13 +16,14 @@
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
     import { enhance } from '$app/forms';
+    import { toast } from '$lib/stores/toast';
 
     let { data, form } = $props();
     let paymentMethod = $state('transfer'); // 'transfer' or 'teller'
 
     function copyVA() {
         navigator.clipboard.writeText(data.billing.virtualAccount);
-        alert('Virtual Account berhasil disalin!');
+        toast.add('Virtual Account berhasil disalin!', 'success');
     }
 </script>
 
@@ -130,7 +131,7 @@
                                         <Receipt class="w-5 h-5 mr-2" />
                                         Slip Pembayaran Teller
                                     </div>
-                                    <button onclick={() => alert('Sedang mengunduh slip pembayaran PDF...')} class="text-xs font-bold text-amber-700 underline flex items-center">
+                                    <button onclick={() => toast.add('Sedang mengunduh slip pembayaran PDF...', 'info')} class="text-xs font-bold text-amber-700 underline flex items-center">
                                         <Download class="w-3 h-3 mr-1" />
                                         Download Slip
                                     </button>

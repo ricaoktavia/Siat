@@ -13,9 +13,27 @@
         RefreshCcw
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
+    import { toast } from '$lib/stores/toast';
+    import { invalidateAll } from '$app/navigation';
+    import { onMount, onDestroy } from 'svelte';
+
+    let { data } = $props();
 
     let activeDay = $state('Senin');
     const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+
+    // Auto refresh data every 5 seconds when QR Modal is open to simulate real-time
+    let refreshInterval: any;
+    $effect(() => {
+        if (showQRModal) {
+            refreshInterval = setInterval(() => {
+                invalidateAll();
+            }, 3000);
+        } else {
+            clearInterval(refreshInterval);
+        }
+        return () => clearInterval(refreshInterval);
+    });
 
     let showQRModal = $state(false);
     let selectedCourse = $state<any>(null);
@@ -25,23 +43,8 @@
         showQRModal = true;
     }
 
-    // Dummy Teaching Schedule
-    const teachingData = {
-        'Senin': [
-            { id: 1, mk: 'Desain dan Analisis Algoritma', waktu: '08:00 - 10:30', ruang: 'Gedung A - R.201', kelas: 'TI-A', mahasiswa: 38 },
-            { id: 2, mk: 'Teori Graf', waktu: '13:00 - 15:30', ruang: 'Gedung B - R.102', kelas: 'TI-C', mahasiswa: 42 }
-        ],
-        'Selasa': [
-            { id: 3, mk: 'Matematika Diskrit', waktu: '08:00 - 10:30', ruang: 'Gedung A - R.205', kelas: 'TI-B', mahasiswa: 40 }
-        ],
-        'Rabu': [],
-        'Kamis': [
-            { id: 4, mk: 'Komputasi Numerik', waktu: '10:00 - 12:30', ruang: 'Gedung C - R.301', kelas: 'SI-A', mahasiswa: 35 }
-        ],
-        'Jumat': []
-    };
-
-    let currentSchedule = $derived(teachingData[activeDay as keyof typeof teachingData] || []);
+    let currentSchedule = $derived(data.teachingData[activeDay] || []);
+    let currentStudents = $derived(selectedCourse ? data.attendanceByClass[selectedCourse.id] : []);
 </script>
 
 <svelte:head>
@@ -212,28 +215,28 @@
                         Daftar Hadir Mahasiswa
                     </h4>
                     <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
-                        12 / {selectedCourse?.mahasiswa}
+                        {currentStudents.filter(s => s.hadir).length} / {currentStudents.length}
                     </span>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-4 space-y-2 bg-white">
-                    {#each Array(8) as _, i}
+                    {#each currentStudents as student, i}
                         <div class="flex items-center justify-between p-3 rounded-2xl border border-slate-50 hover:bg-slate-50 transition-all group">
                             <div class="flex items-center space-x-3">
                                 <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
                                     {i + 1}
                                 </div>
                                 <div>
-                                    <p class="text-xs font-bold text-slate-800">Mahasiswa Simulasi {i + 1}</p>
-                                    <p class="text-[9px] text-slate-400 font-mono">21010100{i + 1}</p>
+                                    <p class="text-xs font-bold text-slate-800">{student.name}</p>
+                                    <p class="text-[9px] text-slate-400 font-mono">{student.nim}</p>
                                 </div>
                             </div>
-                            {#if i < 4}
+                            {#if student.hadir}
                                 <span class="px-2 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase rounded-lg border border-emerald-100">Hadir</span>
                             {:else}
-                                <button class="px-3 py-1 bg-white border border-slate-200 text-[9px] font-bold text-slate-500 rounded-lg hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all">
-                                    Check-in
-                                </button>
+                                <span class="px-3 py-1 bg-slate-50 border border-slate-200 text-[9px] font-bold text-slate-400 rounded-lg">
+                                    Belum Hadir
+                                </span>
                             {/if}
                         </div>
                     {/each}
@@ -241,7 +244,7 @@
 
                 <div class="p-6 bg-slate-50 border-t border-slate-100">
                     <button 
-                        onclick={() => alert('Laporan kehadiran berhasil diunduh!')}
+                        onclick={() => toast.add('Laporan kehadiran berhasil diunduh!', 'success')}
                         class="w-full py-3 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-bold flex items-center justify-center hover:bg-slate-100 transition-all"
                     >
                         <Printer class="w-4 h-4 mr-2" />

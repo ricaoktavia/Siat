@@ -1,22 +1,50 @@
-import { db } from '$lib/server/mockDb';
+import { db } from '$lib/server/db';
+import { presensiLog, kelasKuliah, mataKuliah } from '$lib/server/db/schema';
+import { eq, sql, and } from 'drizzle-orm';
 
-export function load() {
+export async function load() {
+    // Demo: Budi (mahasiswa_id = 1)
+    const mahasiswaId = 1;
+    
+    const classes = await db.select({
+        kode: mataKuliah.kode,
+        nama: mataKuliah.nama,
+        kelasId: kelasKuliah.id,
+        hadir: sql<number>`COUNT(${presensiLog.id})`.mapWith(Number),
+        total: sql<number>`14`.mapWith(Number)
+    })
+    .from(kelasKuliah)
+    .innerJoin(mataKuliah, eq(kelasKuliah.mataKuliahId, mataKuliah.id))
+    .leftJoin(presensiLog, and(
+        eq(presensiLog.kelasKuliahId, kelasKuliah.id),
+        eq(presensiLog.mahasiswaId, mahasiswaId)
+    ))
+    .groupBy(kelasKuliah.id, mataKuliah.kode, mataKuliah.nama);
+    
+    const formattedPresensi = classes.map(c => ({
+        kode: c.kode,
+        nama: c.nama,
+        kelasId: c.kelasId,
+        hadir: c.hadir,
+        total: c.total,
+        persentase: parseFloat(((c.hadir / c.total) * 100).toFixed(1))
+    }));
+
     return {
-        presensi: db.presensi
+        presensi: formattedPresensi
     };
 }
 
 export const actions = {
     markAttendance: async ({ request }) => {
         const data = await request.formData();
-        const kode = data.get('kode');
+        const kelasId = Number(data.get('kelasId'));
         
-        const course = db.presensi.find(p => p.kode === kode);
-        if (course && course.hadir < course.total) {
-            course.hadir += 1;
-            course.persentase = parseFloat(((course.hadir / course.total) * 100).toFixed(1));
-        }
+        await db.insert(presensiLog).values({
+            kelasKuliahId: kelasId,
+            mahasiswaId: 1
+        });
         
-        return { success: true, message: `Absensi Berhasil! Anda tercatat hadir di mata kuliah ${course?.nama}.` };
+        return { success: true, message: `Absensi Berhasil tersimpan ke Database!` };
     }
 };

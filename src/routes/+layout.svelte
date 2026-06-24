@@ -17,6 +17,7 @@
 		Wallet,
 		UserCheck
 	} from 'lucide-svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { data, children } = $props();
 
@@ -158,4 +159,5 @@
 			</main>
 		</div>
 	</div>
+	<Toast />
 {/if}

@@ -197,7 +197,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     {#each data.presensi as item}
                         <form method="POST" action="?/markAttendance" use:enhance>
-                            <input type="hidden" name="kode" value={item.kode} />
+                            <input type="hidden" name="kelasId" value={item.kelasId} />
                             <button 
                                 type="submit"
                                 class="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl text-xs font-bold transition-all"

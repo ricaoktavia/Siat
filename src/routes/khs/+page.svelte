@@ -12,6 +12,9 @@
         Info
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
+    import { toast } from '$lib/stores/toast';
+    import jsPDF from 'jspdf';
+    import autoTable from 'jspdf-autotable';
 
     let { data } = $props();
 
@@ -55,6 +58,39 @@
         if (grade.startsWith('B')) return 'text-blue-600 bg-blue-50 border-blue-100';
         if (grade.startsWith('C')) return 'text-amber-600 bg-amber-50 border-amber-100';
         return 'text-rose-600 bg-rose-50 border-rose-100';
+    }
+
+    function exportTranscriptPDF() {
+        try {
+            const doc = new jsPDF();
+            doc.setFontSize(14);
+            doc.text('TRANSKRIP NILAI AKADEMIK', 105, 20, { align: 'center' });
+            doc.setFontSize(10);
+            doc.text('Universitas Nusantara', 105, 26, { align: 'center' });
+            
+            let startY = 40;
+            
+            data.transcript.forEach(sem => {
+                doc.setFontSize(10);
+                doc.text(`Semester ${sem.semester} (IPS: ${sem.gpa.toFixed(2)})`, 14, startY - 2);
+                
+                autoTable(doc, {
+                    startY: startY,
+                    head: [['Kode', 'Mata Kuliah', 'SKS', 'Nilai']],
+                    body: sem.courses.map(c => [c.kode, c.nama, c.sks, c.nilai]),
+                    theme: 'striped',
+                    headStyles: { fillColor: [37, 99, 235] },
+                    margin: { left: 14, right: 14 },
+                });
+                
+                startY = (doc as any).lastAutoTable.finalY + 15;
+            });
+            
+            doc.save('Transkrip_Nilai.pdf');
+            toast.add('Transkrip nilai berhasil diekspor!', 'success');
+        } catch (e) {
+            toast.add('Gagal mengekspor PDF', 'error');
+        }
     }
 </script>
 
@@ -218,7 +254,7 @@
                     <Award class="w-5 h-5 text-amber-500 mr-2" />
                     <h3 class="text-lg font-bold text-slate-800">Transkrip Nilai Kumulatif</h3>
                 </div>
-                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all flex items-center">
+                <button onclick={exportTranscriptPDF} class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all flex items-center">
                     <Download class="w-3 h-3 mr-2" />
                     Export PDF
                 </button>

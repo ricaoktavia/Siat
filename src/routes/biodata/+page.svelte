@@ -13,9 +13,11 @@
 		X
 	} from 'lucide-svelte';
 	import { fade, slide, scale } from 'svelte/transition';
+	import { toast } from '$lib/stores/toast';
+	import jsPDF from 'jspdf';
 
 	// Dummy Data
-	let student = {
+	let student = $state({
 		name: 'Budi Santoso',
 		nim: '210101001',
 		prodi: 'Teknik Informatika',
@@ -24,9 +26,9 @@
 		jalurMasuk: 'SNMPTN',
 		tahunMasuk: 2021,
 		dosenWali: 'Dr. Ir. Riza, M.T.'
-	};
+	});
 
-	let personalInfo = {
+	let personalInfo = $state({
 		nik: '3578012345678901',
 		tempatLahir: 'Surabaya',
 		tanggalLahir: '15 Agustus 2003',
@@ -34,40 +36,102 @@
 		agama: 'Islam',
 		kewarganegaraan: 'WNI',
 		golonganDarah: 'O'
-	};
+	});
 
-	let contactInfo = {
+	let contactInfo = $state({
 		email: 'budi.santoso@mhs.nusantara.ac.id',
 		emailPribadi: 'budi.snt@gmail.com',
 		noHp: '+62 812-3456-7890',
 		alamatAsal: 'Jl. Merdeka No. 45, RT 01/RW 02, Kec. Sukolilo, Surabaya, Jawa Timur 60111',
 		alamatDomisili: 'Jl. Raya Kampus No. 12 (Kos Bu Marni), Bandung, Jawa Barat'
-	};
+	});
 
-	let parentInfo = {
+	let parentInfo = $state({
 		namaAyah: 'Sudirman',
 		pekerjaanAyah: 'Wiraswasta',
 		namaIbu: 'Siti Rahmawati',
 		pekerjaanIbu: 'PNS',
 		noTeleponDarurat: '+62 813-9876-5432'
-	};
+	});
 
-	// Modal States
 	let showEditProfile = $state(false);
 	let showEditPhoto = $state(false);
 	let isDownloading = $state(false);
+	let profileImageUrl = $state("https://ui-avatars.com/api/?name=Budi+Santoso&background=e2e8f0&color=334155&size=128&rounded=true&format=png");
 
 	function handleDownloadCard() {
 		isDownloading = true;
 		setTimeout(() => {
-			isDownloading = false;
-			alert('Kartu Tanda Mahasiswa (KTM) berhasil diunduh dalam format PDF!');
-		}, 1500);
+			try {
+				const doc = new jsPDF({
+					orientation: 'landscape',
+					unit: 'mm',
+					format: [85.6, 53.98]
+				});
+
+				// Card top blue bg
+				doc.setFillColor(37, 99, 235);
+				doc.rect(0, 0, 85.6, 53.98, 'F');
+				
+				// Card bottom white bg
+				doc.setFillColor(255, 255, 255);
+				doc.rect(0, 15, 85.6, 38.98, 'F');
+
+				doc.setTextColor(255, 255, 255);
+				doc.setFontSize(10);
+				doc.setFont('helvetica', 'bold');
+				doc.text('KARTU TANDA MAHASISWA', 42.8, 8, { align: 'center' });
+				doc.setFontSize(6);
+				doc.text('UNIVERSITAS NUSANTARA', 42.8, 12, { align: 'center' });
+
+				// Photo placeholder fallback
+				doc.setFillColor(226, 232, 240);
+				doc.rect(5, 18, 20, 25, 'F');
+				
+				// Actual Photo
+				try {
+					// Use 'PNG' or 'JPEG' depending on the data
+					const imgFormat = profileImageUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+					doc.addImage(profileImageUrl, imgFormat, 5, 18, 20, 25);
+				} catch(err) {
+					// ignore if image fails to load in PDF
+					console.error("Failed to add image to PDF", err);
+				}
+
+				doc.setTextColor(51, 65, 85);
+				doc.setFontSize(8);
+				doc.setFont('helvetica', 'bold');
+				doc.text(student.name.toUpperCase(), 30, 22);
+				
+				doc.setFontSize(6);
+				doc.setFont('helvetica', 'normal');
+				doc.text(student.nim, 30, 26);
+				doc.text(student.prodi, 30, 30);
+				doc.text(student.fakultas, 30, 34);
+
+				doc.save(`KTM_${student.nim}.pdf`);
+				toast.add('Kartu Tanda Mahasiswa (KTM) berhasil diunduh dalam format PDF!', 'success');
+			} catch (e) {
+				toast.add('Gagal membuat PDF', 'error');
+			} finally {
+				isDownloading = false;
+			}
+		}, 800);
 	}
 
 	function handlePhotoChange(e: any) {
-		alert('Fitur upload foto sedang disiapkan. Foto profil akan diperbarui setelah sistem penyimpanan aktif.');
-		showEditPhoto = false;
+		const file = e.target.files[0];
+		if (file) {
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				if (event.target?.result) {
+					profileImageUrl = event.target.result as string;
+					toast.add('Foto profil berhasil diperbarui!', 'success');
+					showEditPhoto = false;
+				}
+			};
+			reader.readAsDataURL(file);
+		}
 	}
 </script>
 
@@ -107,9 +171,9 @@
 			<div class="flex justify-center -mt-16 relative z-10">
 				<div class="relative">
 					<img 
-						src="https://ui-avatars.com/api/?name=Budi+Santoso&background=e2e8f0&color=334155&size=128&rounded=true" 
+						src={profileImageUrl} 
 						alt="Profile" 
-						class="w-32 h-32 rounded-full border-4 border-white shadow-md bg-white"
+						class="w-32 h-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
 					/>
 					<!-- Status Badge -->
 					<div class="absolute bottom-2 right-2 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full" title="Status: Aktif"></div>
@@ -332,7 +396,7 @@
 
 				<div class="flex space-x-4 pt-4">
 					<button onclick={() => showEditProfile = false} class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-colors">Batal</button>
-					<button onclick={() => { showEditProfile = false; alert('Profil berhasil diperbarui secara lokal!'); }} class="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all">Simpan Perubahan</button>
+					<button onclick={() => { showEditProfile = false; toast.add('Profil berhasil diperbarui secara lokal!', 'success'); }} class="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all">Simpan Perubahan</button>
 				</div>
 			</div>
 		</div>
