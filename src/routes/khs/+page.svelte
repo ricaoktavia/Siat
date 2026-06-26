@@ -19,16 +19,23 @@
     let { data } = $props();
 
     // Tabs logic
-    let activeTab = $state('khs'); // 'khs' or 'transcript'
+    let activeTab = $state('khs');
 
     // KHS logic
-    let selectedSemester = $state('4'); // Default to latest finished semester
+    let selectedSemester = $state('4');
     
     const academicStats = {
         ipk: 3.75,
         ips: 3.82,
         sksLulus: 84,
         sksTotal: 144
+    };
+
+    const semesterLabels: Record<string, string> = {
+        '1': 'Semester 1 (Ganjil)',
+        '2': 'Semester 2 (Genap)',
+        '3': 'Semester 3 (Ganjil)',
+        '4': 'Semester 4 (Genap)',
     };
 
     const khsData = {
@@ -46,12 +53,16 @@
         ],
         '1': [
             { kode: 'MK101', nama: 'Matematika Dasar', sks: 3, nilai: 'A', bobot: 4.0 },
-            { kode: 'MK102', nama: 'Bahasa Inggris', sks: 2, nilai: 'A-', angka: 3.7 }
+            { kode: 'MK102', nama: 'Bahasa Inggris', sks: 2, nilai: 'A-', bobot: 3.7 }
         ]
     };
 
     let currentKHS = $derived(khsData[selectedSemester as keyof typeof khsData] || []);
     let semesterSks = $derived(currentKHS.reduce((acc, curr) => acc + curr.sks, 0));
+    let semesterIPS = $derived(() => {
+        const total = currentKHS.reduce((acc, curr) => acc + curr.bobot * curr.sks, 0);
+        return semesterSks > 0 ? total / semesterSks : 0;
+    });
 
     function getGradeColor(grade: string) {
         if (grade.startsWith('A')) return 'text-emerald-600 bg-emerald-50 border-emerald-100';
@@ -60,36 +71,283 @@
         return 'text-rose-600 bg-rose-50 border-rose-100';
     }
 
+    // ── Helper: draw header block ──────────────────────────────────────────────
+    function drawDocHeader(doc: jsPDF, title: string) {
+        const pageW = doc.internal.pageSize.getWidth();
+        doc.setFillColor(37, 99, 235);
+        doc.rect(0, 0, pageW, 28, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('UNIVERSITAS NUSANTARA', pageW / 2, 10, { align: 'center' });
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(title, pageW / 2, 18, { align: 'center' });
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(14, 32, pageW - 14, 32);
+        doc.setTextColor(0, 0, 0);
+    }
+
+    // ── Helper: draw student info block ───────────────────────────────────────
+    function drawStudentInfo(doc: jsPDF, extraLine?: string): number {
+        const student = data.currentStudent;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Nama             : ${student.name}`, 14, 40);
+        doc.text(`NIM               : ${student.nim}`, 14, 47);
+        doc.text(`Program Studi : Teknik Informatika`, 14, 54);
+        if (extraLine) {
+            doc.text(extraLine, 14, 61);
+            return 68;
+        }
+        return 62;
+    }
+
+    // ── Export KHS Semester PDF ────────────────────────────────────────────────
+    function exportKHSPDF() {
+        try {
+            const doc = new jsPDF();
+            const semLabel = semesterLabels[selectedSemester] ?? `Semester ${selectedSemester}`;
+            const ips = semesterIPS();
+
+            drawDocHeader(doc, 'KARTU HASIL STUDI (KHS)');
+            const tableStartY = drawStudentInfo(doc, `Semester      : ${semLabel}`);
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(37, 99, 235);
+            doc.text(`IPS: ${ips.toFixed(2)}   |   Total SKS: ${semesterSks}`, 14, tableStartY - 2);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+
+            autoTable(doc, {
+                startY: tableStartY + 2,
+                head: [['No.', 'Kode MK', 'Nama Mata Kuliah', 'SKS', 'Nilai', 'Bobot']],
+                body: currentKHS.map((item, i) => [
+                    i + 1, item.kode, item.nama, item.sks, item.nilai, item.bobot.toFixed(2)
+                ]),
+                foot: [['', '', 'Total', semesterSks, '', ips.toFixed(2)]],
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9, fontStyle: 'bold' },
+                footStyles: { fillColor: [240, 245, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { fontSize: 9 },
+                columnStyles: {
+                    0: { cellWidth: 12, halign: 'center' },
+                    3: { cellWidth: 14, halign: 'center' },
+                    4: { cellWidth: 18, halign: 'center' },
+                    5: { cellWidth: 18, halign: 'center' }
+                },
+                margin: { left: 14, right: 14 },
+            });
+
+            const finalY = (doc as any).lastAutoTable.finalY + 10;
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text('Dokumen ini digenerate secara otomatis oleh Sistem Informasi Akademik Terpadu (SIAT).', 14, finalY);
+
+            doc.save(`KHS_Semester_${selectedSemester}_${data.currentStudent.nim}.pdf`);
+            toast.add('KHS berhasil diekspor sebagai PDF!', 'success');
+        } catch (e) {
+            console.error(e);
+            toast.add('Gagal mengekspor KHS PDF', 'error');
+        }
+    }
+
+    // ── Export Transkrip PDF ───────────────────────────────────────────────────
     function exportTranscriptPDF() {
         try {
             const doc = new jsPDF();
-            doc.setFontSize(14);
-            doc.text('TRANSKRIP NILAI AKADEMIK', 105, 20, { align: 'center' });
-            doc.setFontSize(10);
-            doc.text('Universitas Nusantara', 105, 26, { align: 'center' });
-            
-            let startY = 40;
-            
-            data.transcript.forEach(sem => {
-                doc.setFontSize(10);
-                doc.text(`Semester ${sem.semester} (IPS: ${sem.gpa.toFixed(2)})`, 14, startY - 2);
-                
+            drawDocHeader(doc, 'TRANSKRIP NILAI AKADEMIK');
+            let startY = drawStudentInfo(doc, `IPK Kumulatif : ${academicStats.ipk.toFixed(2)}`);
+
+            data.transcript.forEach((sem: any, idx: number) => {
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(37, 99, 235);
+                doc.text(`Semester ${sem.semester}   |   IPS: ${sem.gpa.toFixed(2)}`, 14, startY + 2);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'normal');
+
+                const semSks = sem.courses.reduce((a: number, c: any) => a + c.sks, 0);
+
                 autoTable(doc, {
-                    startY: startY,
-                    head: [['Kode', 'Mata Kuliah', 'SKS', 'Nilai']],
-                    body: sem.courses.map(c => [c.kode, c.nama, c.sks, c.nilai]),
+                    startY: startY + 6,
+                    head: [['Kode', 'Nama Mata Kuliah', 'SKS', 'Nilai', 'Angka']],
+                    body: sem.courses.map((c: any) => [c.kode, c.nama, c.sks, c.nilai, c.angka?.toFixed(2) ?? '-']),
+                    foot: [['', 'Total SKS Semester', semSks, '', '']],
                     theme: 'striped',
-                    headStyles: { fillColor: [37, 99, 235] },
+                    headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
+                    footStyles: { fillColor: [240, 245, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 8 },
+                    bodyStyles: { fontSize: 8 },
+                    columnStyles: {
+                        0: { cellWidth: 28 },
+                        2: { cellWidth: 14, halign: 'center' },
+                        3: { cellWidth: 16, halign: 'center' },
+                        4: { cellWidth: 18, halign: 'center' }
+                    },
                     margin: { left: 14, right: 14 },
                 });
-                
-                startY = (doc as any).lastAutoTable.finalY + 15;
+
+                startY = (doc as any).lastAutoTable.finalY + 10;
+
+                if (idx < data.transcript.length - 1 && startY > 230) {
+                    doc.addPage();
+                    startY = 20;
+                }
             });
-            
-            doc.save('Transkrip_Nilai.pdf');
+
+            // Summary bar
+            const pageW = doc.internal.pageSize.getWidth();
+            doc.setFillColor(37, 99, 235);
+            doc.rect(14, startY, pageW - 28, 14, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Total SKS Lulus: ${academicStats.sksLulus}  |  IPK: ${academicStats.ipk.toFixed(2)}  |  Status: Aktif / Normal`, pageW / 2, startY + 9, { align: 'center' });
+
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Dokumen ini digenerate secara otomatis oleh Sistem Informasi Akademik Terpadu (SIAT).', 14, startY + 22);
+
+            doc.save(`Transkrip_Nilai_${data.currentStudent.nim}.pdf`);
             toast.add('Transkrip nilai berhasil diekspor!', 'success');
         } catch (e) {
+            console.error(e);
             toast.add('Gagal mengekspor PDF', 'error');
+        }
+    }
+
+    // ── Helper: buka PDF di tab baru lalu trigger print dialog ────────────────
+    function openPrintDialog(doc: jsPDF) {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const printWin = window.open(url, '_blank');
+        if (printWin) {
+            printWin.onload = () => {
+                printWin.focus();
+                printWin.print();
+                // Revoke URL setelah dialog dibuka
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            };
+        } else {
+            // Popup diblokir browser — fallback ke download
+            URL.revokeObjectURL(url);
+            toast.add('Pop-up diblokir browser. Gunakan tombol Export PDF untuk mendownload.', 'error');
+        }
+    }
+
+    // ── Cetak KHS: buka print dialog (BUKAN download) ─────────────────────────
+    function printKHSPDF() {
+        try {
+            const doc = new jsPDF();
+            const semLabel = semesterLabels[selectedSemester] ?? `Semester ${selectedSemester}`;
+            const ips = semesterIPS();
+
+            drawDocHeader(doc, 'KARTU HASIL STUDI (KHS)');
+            const tableStartY = drawStudentInfo(doc, `Semester      : ${semLabel}`);
+
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(37, 99, 235);
+            doc.text(`IPS: ${ips.toFixed(2)}   |   Total SKS: ${semesterSks}`, 14, tableStartY - 2);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+
+            autoTable(doc, {
+                startY: tableStartY + 2,
+                head: [['No.', 'Kode MK', 'Nama Mata Kuliah', 'SKS', 'Nilai', 'Bobot']],
+                body: currentKHS.map((item, i) => [
+                    i + 1, item.kode, item.nama, item.sks, item.nilai, item.bobot.toFixed(2)
+                ]),
+                foot: [['', '', 'Total', semesterSks, '', ips.toFixed(2)]],
+                theme: 'striped',
+                headStyles: { fillColor: [37, 99, 235], fontSize: 9, fontStyle: 'bold' },
+                footStyles: { fillColor: [240, 245, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 9 },
+                bodyStyles: { fontSize: 9 },
+                columnStyles: {
+                    0: { cellWidth: 12, halign: 'center' },
+                    3: { cellWidth: 14, halign: 'center' },
+                    4: { cellWidth: 18, halign: 'center' },
+                    5: { cellWidth: 18, halign: 'center' }
+                },
+                margin: { left: 14, right: 14 },
+            });
+
+            const finalY = (doc as any).lastAutoTable.finalY + 10;
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text('Dokumen ini digenerate secara otomatis oleh Sistem Informasi Akademik Terpadu (SIAT).', 14, finalY);
+
+            openPrintDialog(doc);
+        } catch (e) {
+            console.error(e);
+            toast.add('Gagal membuka dialog cetak', 'error');
+        }
+    }
+
+    // ── Cetak Transkrip: buka print dialog (BUKAN download) ───────────────────
+    function printTranscriptPDF() {
+        try {
+            const doc = new jsPDF();
+            drawDocHeader(doc, 'TRANSKRIP NILAI AKADEMIK');
+            let startY = drawStudentInfo(doc, `IPK Kumulatif : ${academicStats.ipk.toFixed(2)}`);
+
+            data.transcript.forEach((sem: any, idx: number) => {
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(37, 99, 235);
+                doc.text(`Semester ${sem.semester}   |   IPS: ${sem.gpa.toFixed(2)}`, 14, startY + 2);
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('helvetica', 'normal');
+
+                const semSks = sem.courses.reduce((a: number, c: any) => a + c.sks, 0);
+
+                autoTable(doc, {
+                    startY: startY + 6,
+                    head: [['Kode', 'Nama Mata Kuliah', 'SKS', 'Nilai', 'Angka']],
+                    body: sem.courses.map((c: any) => [c.kode, c.nama, c.sks, c.nilai, c.angka?.toFixed(2) ?? '-']),
+                    foot: [['', 'Total SKS Semester', semSks, '', '']],
+                    theme: 'striped',
+                    headStyles: { fillColor: [37, 99, 235], fontSize: 8, fontStyle: 'bold' },
+                    footStyles: { fillColor: [240, 245, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 8 },
+                    bodyStyles: { fontSize: 8 },
+                    columnStyles: {
+                        0: { cellWidth: 28 },
+                        2: { cellWidth: 14, halign: 'center' },
+                        3: { cellWidth: 16, halign: 'center' },
+                        4: { cellWidth: 18, halign: 'center' }
+                    },
+                    margin: { left: 14, right: 14 },
+                });
+
+                startY = (doc as any).lastAutoTable.finalY + 10;
+
+                if (idx < data.transcript.length - 1 && startY > 230) {
+                    doc.addPage();
+                    startY = 20;
+                }
+            });
+
+            const pageW = doc.internal.pageSize.getWidth();
+            doc.setFillColor(37, 99, 235);
+            doc.rect(14, startY, pageW - 28, 14, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`Total SKS Lulus: ${academicStats.sksLulus}  |  IPK: ${academicStats.ipk.toFixed(2)}  |  Status: Aktif / Normal`, pageW / 2, startY + 9, { align: 'center' });
+
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Dokumen ini digenerate secara otomatis oleh Sistem Informasi Akademik Terpadu (SIAT).', 14, startY + 22);
+
+            openPrintDialog(doc);
+        } catch (e) {
+            console.error(e);
+            toast.add('Gagal membuka dialog cetak', 'error');
         }
     }
 </script>
@@ -125,8 +383,9 @@
                     Transkrip Nilai
                 </button>
             </div>
+            <!-- Tombol Cetak: buka dialog print browser -->
             <button 
-                onclick={() => window.print()}
+                onclick={() => activeTab === 'khs' ? printKHSPDF() : printTranscriptPDF()}
                 class="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all"
             >
                 <Printer class="w-4 h-4 mr-2" />
@@ -213,6 +472,15 @@
                         </select>
                         <ChevronDown class="absolute right-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
+
+                    <!-- Export PDF KHS Semester -->
+                    <button 
+                        onclick={exportKHSPDF}
+                        class="flex items-center px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
+                    >
+                        <Download class="w-3 h-3 mr-2" />
+                        Export PDF
+                    </button>
                 </div>
             </div>
 
