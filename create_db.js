@@ -8,10 +8,10 @@ async function main() {
             password: ''
         });
         
-        await connection.query('CREATE DATABASE IF NOT EXISTS siat_db;');
-        console.log('Database siat_db created or exists');
+        await connection.query('CREATE DATABASE IF NOT EXISTS siat;');
+        console.log('Database siat created or exists');
         
-        await connection.query('USE siat_db;');
+        await connection.query('USE siat;');
 
         // Ensure tables exist before seeding (usually Drizzle push does this, but we'll run drizzle push first)
         process.exit(0);

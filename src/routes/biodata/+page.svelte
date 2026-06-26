@@ -15,49 +15,53 @@
 	import { fade, slide, scale } from 'svelte/transition';
 	import { toast } from '$lib/stores/toast';
 	import jsPDF from 'jspdf';
+	import { enhance } from '$app/forms';
 
-	// Dummy Data
+	let { data } = $props();
+
+	// Dummy Data merged with actual data
 	let student = $state({
-		name: 'Budi Santoso',
-		nim: '210101001',
-		prodi: 'Teknik Informatika',
+		name: data?.user?.name || 'Mahasiswa',
+		nim: data?.studentInfo?.nim || '-',
+		prodi: data?.studentInfo?.prodi || 'Teknik Informatika',
 		fakultas: 'Ilmu Komputer',
 		status: 'Aktif',
 		jalurMasuk: 'SNMPTN',
-		tahunMasuk: 2021,
-		dosenWali: 'Dr. Ir. Riza, M.T.'
+		tahunMasuk: 2023,
+		dosenWali: 'Sholeh Rachmatullah'
 	});
 
 	let personalInfo = $state({
-		nik: '3578012345678901',
-		tempatLahir: 'Surabaya',
-		tanggalLahir: '15 Agustus 2003',
-		jenisKelamin: 'Laki-laki',
-		agama: 'Islam',
-		kewarganegaraan: 'WNI',
-		golonganDarah: 'O'
+		nik: data?.studentInfo?.nik || '3578012345678901',
+		tempatLahir: data?.studentInfo?.tempatLahir || 'Surabaya',
+		tanggalLahir: data?.studentInfo?.tanggalLahir || '15 Agustus 2003',
+		jenisKelamin: data?.studentInfo?.jenisKelamin || 'Laki-laki',
+		agama: data?.studentInfo?.agama || 'Islam',
+		kewarganegaraan: data?.studentInfo?.kewarganegaraan || 'WNI',
+		golonganDarah: data?.studentInfo?.golonganDarah || 'O'
 	});
 
 	let contactInfo = $state({
-		email: 'budi.santoso@mhs.nusantara.ac.id',
-		emailPribadi: 'budi.snt@gmail.com',
-		noHp: '+62 812-3456-7890',
-		alamatAsal: 'Jl. Merdeka No. 45, RT 01/RW 02, Kec. Sukolilo, Surabaya, Jawa Timur 60111',
-		alamatDomisili: 'Jl. Raya Kampus No. 12 (Kos Bu Marni), Bandung, Jawa Barat'
+		email: data?.studentInfo?.email || 'budi.santoso@mhs.nusantara.ac.id',
+		emailPribadi: data?.studentInfo?.emailPribadi || 'budi.snt@gmail.com',
+		noHp: data?.studentInfo?.noHp || '+62 812-3456-7890',
+		alamatAsal: data?.studentInfo?.alamatAsal || 'Jl. Merdeka No. 45, RT 01/RW 02, Kec. Sukolilo, Surabaya, Jawa Timur 60111',
+		alamatDomisili: data?.studentInfo?.alamatDomisili || 'Jl. Raya Kampus No. 12 (Kos Bu Marni), Bandung, Jawa Barat'
 	});
 
 	let parentInfo = $state({
-		namaAyah: 'Sudirman',
-		pekerjaanAyah: 'Wiraswasta',
-		namaIbu: 'Siti Rahmawati',
-		pekerjaanIbu: 'PNS',
-		noTeleponDarurat: '+62 813-9876-5432'
+		namaAyah: data?.studentInfo?.namaAyah || 'Sudirman',
+		pekerjaanAyah: data?.studentInfo?.pekerjaanAyah || 'Wiraswasta',
+		namaIbu: data?.studentInfo?.namaIbu || 'Siti Rahmawati',
+		pekerjaanIbu: data?.studentInfo?.pekerjaanIbu || 'PNS',
+		noTeleponDarurat: data?.studentInfo?.noTeleponDarurat || '+62 813-9876-5432'
 	});
+
 
 	let showEditProfile = $state(false);
 	let showEditPhoto = $state(false);
 	let isDownloading = $state(false);
-	let profileImageUrl = $state("https://ui-avatars.com/api/?name=Budi+Santoso&background=e2e8f0&color=334155&size=128&rounded=true&format=png");
+	let profileImageUrl = $state(`https://ui-avatars.com/api/?name=${encodeURIComponent(data?.user?.name || 'Mahasiswa')}&background=e2e8f0&color=334155&size=128&rounded=true&format=png`);
 
 	function handleDownloadCard() {
 		isDownloading = true;
@@ -378,27 +382,36 @@
 				</button>
 			</div>
 			
-			<div class="p-8 space-y-6">
+			<form method="POST" action="?/updateProfile" use:enhance={() => {
+				return async ({ result }) => {
+					if (result.type === 'success') {
+						toast.add('Profil berhasil diperbarui!', 'success');
+						showEditProfile = false;
+					} else {
+						toast.add('Gagal memperbarui profil.', 'error');
+					}
+				};
+			}} class="p-8 space-y-6">
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 					<div class="space-y-2">
 						<label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Email Pribadi</label>
-						<input type="email" bind:value={contactInfo.emailPribadi} class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+						<input type="email" name="emailPribadi" bind:value={contactInfo.emailPribadi} class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
 					</div>
 					<div class="space-y-2">
 						<label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Nomor Handphone</label>
-						<input type="text" bind:value={contactInfo.noHp} class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+						<input type="text" name="noHp" bind:value={contactInfo.noHp} class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
 					</div>
 					<div class="md:col-span-2 space-y-2">
 						<label class="text-xs font-bold text-slate-500 uppercase tracking-widest">Alamat Domisili</label>
-						<textarea bind:value={contactInfo.alamatDomisili} rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+						<textarea name="alamatDomisili" bind:value={contactInfo.alamatDomisili} rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
 					</div>
 				</div>
 
 				<div class="flex space-x-4 pt-4">
-					<button onclick={() => showEditProfile = false} class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-colors">Batal</button>
-					<button onclick={() => { showEditProfile = false; toast.add('Profil berhasil diperbarui secara lokal!', 'success'); }} class="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all">Simpan Perubahan</button>
+					<button type="button" onclick={() => showEditProfile = false} class="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-colors">Batal</button>
+					<button type="submit" class="flex-1 py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all">Simpan Perubahan</button>
 				</div>
-			</div>
+			</form>
 		</div>
 	</div>
 {/if}

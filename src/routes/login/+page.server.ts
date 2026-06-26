@@ -1,5 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { db } from '$lib/server/mockDb';
+import { db } from '$lib/server/db';
+import { users } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 export const actions = {
     login: async ({ request, cookies }) => {
@@ -8,7 +10,9 @@ export const actions = {
         const password = data.get('password') as string;
 
         console.log(`Login attempt: ${username}`);
-        const user = db.users.find(u => u.username === username && u.password === password);
+        
+        const result = await db.select().from(users).where(and(eq(users.username, username), eq(users.password, password))).limit(1);
+        const user = result[0];
 
         if (!user) {
             console.log('Login failed: User not found or password mismatch');
@@ -16,11 +20,10 @@ export const actions = {
         }
 
         console.log(`Login success: ${user.name} (${user.role})`);
-        // Set session in mock DB
-        db.currentSession = user;
         
         // Simulating a cookie session
-        cookies.set('session', user.role, { path: '/', httpOnly: true });
+        cookies.set('session', user.id, { path: '/', httpOnly: true });
+        cookies.set('role', user.role, { path: '/', httpOnly: true });
 
         if (user.role === 'LECTURER') {
             throw redirect(303, '/lecturer');
@@ -31,7 +34,7 @@ export const actions = {
 
     logout: async ({ cookies }) => {
         cookies.delete('session', { path: '/' });
-        db.currentSession = null;
+        cookies.delete('role', { path: '/' });
         throw redirect(303, '/login');
     }
 };

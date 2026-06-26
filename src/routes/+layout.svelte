@@ -87,10 +87,10 @@
 					{data.role === 'LECTURER' ? 'Menu Dosen' : 'Menu Utama'}
 				</div>
 				{#each menuItems as item}
-					{@const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path))}
+					{@const isActive = currentPath === item.path || (item.path !== '/' && item.path !== '/lecturer' && currentPath.startsWith(item.path))}
 					<a 
 						href={item.path}
-						class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group
+						class="flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group relative z-50
 							{isActive 
 								? 'bg-blue-600/10 text-blue-400 font-medium' 
 								: 'hover:bg-slate-800 hover:text-white'}"

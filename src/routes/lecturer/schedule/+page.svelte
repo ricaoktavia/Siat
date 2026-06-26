@@ -10,19 +10,20 @@
         ExternalLink,
         QrCode,
         X,
-        RefreshCcw
+        RefreshCcw,
+        CheckCircle2
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
     import { toast } from '$lib/stores/toast';
     import { invalidateAll } from '$app/navigation';
-    import { onMount, onDestroy } from 'svelte';
 
     let { data } = $props();
 
-    let activeDay = $state('Senin');
     const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+    
+    const dayMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    let todayName = $state(dayMap[new Date().getDay()]);
 
-    // Auto refresh data every 5 seconds when QR Modal is open to simulate real-time
     let refreshInterval: any;
     $effect(() => {
         if (showQRModal) {
@@ -43,7 +44,6 @@
         showQRModal = true;
     }
 
-    let currentSchedule = $derived(data.teachingData[activeDay] || []);
     let currentStudents = $derived(selectedCourse ? data.attendanceByClass[selectedCourse.id] : []);
 </script>
 
@@ -58,97 +58,108 @@
                 <BookOpen class="w-7 h-7 mr-3 text-indigo-600" />
                 Jadwal Mengajar
             </h1>
-            <p class="text-sm text-slate-500 mt-1">Agenda perkuliahan yang Anda ampu pada semester ini.</p>
+            <p class="text-sm text-slate-500 mt-1">Seluruh agenda perkuliahan yang Anda ampu pada semester ini.</p>
         </div>
         
         <div class="flex items-center space-x-3">
             <button class="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 shadow-sm transition-all">
                 <Printer class="w-4 h-4 mr-2" />
-                Cetak Agenda
+                Cetak Agenda Lengkap
             </button>
         </div>
     </div>
 
-    <!-- Day Selector -->
-    <div class="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm flex space-x-1 shrink-0 overflow-x-auto no-scrollbar">
+    <!-- Full Schedule List -->
+    <div class="flex-1 space-y-8">
         {#each days as day}
-            <button 
-                onclick={() => activeDay = day}
-                class="flex-1 min-w-[100px] py-2.5 px-4 rounded-xl text-sm font-bold transition-all duration-200
-                    {activeDay === day 
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}"
-            >
-                {day}
-            </button>
-        {/each}
-    </div>
-
-    <!-- Teaching Timeline -->
-    <div class="flex-1 space-y-4">
-        {#if currentSchedule.length > 0}
-            <div class="grid grid-cols-1 gap-4">
-                {#each currentSchedule as item, i (item.id)}
-                    <div 
-                        in:fade={{ delay: i * 50 }}
-                        class="bg-white rounded-3xl border border-slate-200 shadow-sm p-1 transition-all hover:shadow-lg hover:border-indigo-200 group flex flex-col md:flex-row"
-                    >
-                        <div class="md:w-48 bg-slate-50 p-6 flex flex-col justify-center items-center md:items-start md:border-r border-slate-100 shrink-0">
-                            <div class="flex items-center text-indigo-600 font-bold text-lg mb-1">
-                                <Clock class="w-4 h-4 mr-2" />
-                                {item.waktu.split(' - ')[0]}
-                            </div>
-                            <div class="text-xs text-slate-400 font-medium uppercase tracking-widest">{item.waktu.split(' - ')[1]}</div>
-                        </div>
-
-                        <div class="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div class="space-y-1">
-                                <div class="flex items-center space-x-3 mb-2">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-wider border border-indigo-100">
-                                        Kelas {item.kelas}
-                                    </span>
-                                    <span class="text-xs text-slate-400 flex items-center">
-                                        <Users class="w-3.5 h-3.5 mr-1.5" />
-                                        {item.mahasiswa} Mahasiswa
-                                    </span>
-                                </div>
-                                <h3 class="text-xl font-black text-slate-800 group-hover:text-indigo-600 transition-colors">
-                                    {item.mk}
-                                </h3>
-                                <div class="flex items-center text-sm text-slate-500 mt-2">
-                                    <MapPin class="w-4 h-4 mr-2 text-slate-400" />
-                                    {item.ruang}
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-center space-x-2">
-                                <button 
-                                    onclick={() => openQR(item)}
-                                    class="px-5 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-sm font-bold border border-transparent hover:border-slate-200 hover:bg-white transition-all flex items-center"
-                                >
-                                    Presensi
-                                    <QrCode class="w-4 h-4 ml-2" />
-                                </button>
-                                <button class="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
-                                    <ChevronRight class="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
+            {@const schedule = data.teachingData[day] || []}
+            {@const isToday = day === todayName}
+            
+            <div class="flex flex-col relative" id="day-{day}">
+                
+                <!-- Day Header -->
+                <div class="flex items-center justify-between mb-4 pl-4 border-l-4 {isToday ? 'border-indigo-600' : 'border-slate-300'}">
+                    <div class="flex items-center">
+                        <h2 class="text-lg font-black uppercase tracking-widest {isToday ? 'text-indigo-700' : 'text-slate-600'}">
+                            {day}
+                        </h2>
+                        {#if isToday}
+                            <span class="ml-3 px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-lg border border-indigo-200 shadow-sm">HARI INI</span>
+                        {/if}
                     </div>
-                {/each}
-            </div>
-        {:else}
-            <div class="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100 shadow-inner">
-                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <CalendarDays class="w-10 h-10 text-slate-200" />
+                    {#if schedule.length > 0}
+                        <span class="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200">{schedule.length} Sesi</span>
+                    {/if}
                 </div>
-                <h3 class="text-lg font-bold text-slate-400 uppercase tracking-widest">Tidak Ada Jadwal Mengajar</h3>
-                <p class="text-sm text-slate-400 mt-1">Hari ini Anda tidak memiliki jadwal perkuliahan.</p>
+
+                <!-- Classes Grid -->
+                {#if schedule.length > 0}
+                    <div class="grid grid-cols-1 gap-4">
+                        {#each schedule as item, i}
+                            <div class="bg-white rounded-3xl border {isToday ? 'border-indigo-300 shadow-md shadow-indigo-100/50' : 'border-slate-200 shadow-sm'} p-1 transition-all hover:shadow-lg hover:border-indigo-200 group flex flex-col md:flex-row relative overflow-hidden">
+                                
+                                {#if isToday}
+                                    <div class="absolute top-0 left-0 bottom-0 w-1 bg-indigo-500"></div>
+                                {/if}
+
+                                <div class="md:w-48 {isToday ? 'bg-indigo-50/50' : 'bg-slate-50'} p-6 flex flex-col justify-center items-center md:items-start md:border-r border-slate-100 shrink-0">
+                                    <div class="flex items-center {isToday ? 'text-indigo-600' : 'text-slate-600'} font-bold text-lg mb-1">
+                                        <Clock class="w-4 h-4 mr-2" />
+                                        {item.waktu.split(' - ')[0]}
+                                    </div>
+                                    <div class="text-xs text-slate-400 font-medium uppercase tracking-widest">{item.waktu.split(' - ')[1]}</div>
+                                </div>
+
+                                <div class="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 pl-8">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center space-x-3 mb-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md {isToday ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'} text-[10px] font-black uppercase tracking-wider">
+                                                Kelas {item.kelas}
+                                            </span>
+                                            <span class="text-xs text-slate-400 flex items-center">
+                                                <Users class="w-3.5 h-3.5 mr-1.5" />
+                                                {item.mahasiswa} Mahasiswa
+                                            </span>
+                                        </div>
+                                        <h3 class="text-xl font-black text-slate-800 group-hover:text-indigo-600 transition-colors">
+                                            {item.mk}
+                                        </h3>
+                                        <div class="flex items-center text-sm text-slate-500 mt-2">
+                                            <MapPin class="w-4 h-4 mr-2 text-slate-400" />
+                                            {item.ruang}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center space-x-2">
+                                        <button 
+                                            onclick={() => openQR(item)}
+                                            class="px-5 py-2.5 {isToday ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700' : 'bg-slate-50 text-slate-600 border border-transparent hover:border-slate-200 hover:bg-white'} rounded-xl text-sm font-bold transition-all flex items-center"
+                                        >
+                                            Presensi
+                                            <QrCode class="w-4 h-4 ml-2" />
+                                        </button>
+                                        <button class="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
+                                            <ChevronRight class="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <div class="flex items-center justify-center py-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                        <p class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                            <CalendarDays class="w-4 h-4 mr-2 opacity-50" />
+                            Kosong
+                        </p>
+                    </div>
+                {/if}
             </div>
-        {/if}
+        {/each}
     </div>
 </div>
 
+<!-- QR MODAL (Unchanged) -->
 {#if showQRModal}
     <div 
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
@@ -158,7 +169,6 @@
             class="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl overflow-hidden relative flex flex-col md:flex-row"
             transition:scale={{ duration: 400, start: 0.9, opacity: 0 }}
         >
-            <!-- Close Button -->
             <button 
                 onclick={() => showQRModal = false}
                 class="absolute top-6 right-6 p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-rose-50 hover:text-rose-500 transition-all z-20"

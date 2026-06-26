@@ -1,13 +1,21 @@
 import { db } from '$lib/server/db';
-import { kelasKuliah, mataKuliah, presensiLog, mahasiswa, users } from '$lib/server/db/schema';
+import { kelasKuliah, mataKuliah, presensi, mahasiswa, users } from '$lib/server/db/schema';
 import { eq, inArray, sql } from 'drizzle-orm';
 
-export async function load() {
-    const lecturerId = 'u2'; // Dr. Ir. Riza
+import { redirect } from '@sveltejs/kit';
+
+export async function load({ cookies }) {
+    const sessionId = cookies.get('session');
+    if (!sessionId) throw redirect(303, '/login');
+
+    const lecturerRes = await db.select().from(users).where(eq(users.id, sessionId)).limit(1);
+    if (lecturerRes.length === 0) throw redirect(303, '/login');
+    const lecturer = lecturerRes[0];
 
     // 1. Fetch Schedule
     const scheduleRaw = await db.select({
         id: kelasKuliah.id,
+        mataKuliahId: mataKuliah.id,
         mk: mataKuliah.nama,
         waktu: kelasKuliah.jadwal,
         ruang: sql<string>`'Gedung A - R.201'`,
@@ -16,7 +24,7 @@ export async function load() {
     })
     .from(kelasKuliah)
     .innerJoin(mataKuliah, eq(kelasKuliah.mataKuliahId, mataKuliah.id))
-    .where(eq(kelasKuliah.dosenUserId, lecturerId));
+    .where(eq(kelasKuliah.dosenUtama, lecturer.name));
 
     const teachingData: Record<string, any[]> = {
         'Senin': [], 'Selasa': [], 'Rabu': [], 'Kamis': [], 'Jumat': []
@@ -43,14 +51,14 @@ export async function load() {
     let attendanceLogs: any[] = [];
     if (scheduleRaw.length > 0) {
         attendanceLogs = await db.select()
-        .from(presensiLog)
-        .where(inArray(presensiLog.kelasKuliahId, scheduleRaw.map(s => s.id)));
+        .from(presensi)
+        .where(inArray(presensi.mataKuliahId, scheduleRaw.map(s => s.mataKuliahId)));
     }
 
     const attendanceByClass: Record<number, any[]> = {};
     scheduleRaw.forEach(s => {
         attendanceByClass[s.id] = studentsRaw.map(st => {
-            const isPresent = attendanceLogs.some(log => log.kelasKuliahId === s.id && log.mahasiswaId === st.mahasiswaId);
+            const isPresent = attendanceLogs.some(log => log.mataKuliahId === s.mataKuliahId && log.mahasiswaId === st.mahasiswaId && log.hadir > 0);
             return {
                 id: st.mahasiswaId,
                 name: st.nama,

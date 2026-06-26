@@ -196,7 +196,14 @@
                 <p class="text-white/40 text-xs text-center mb-4">Simulasi: Pilih mata kuliah untuk diabsen via QR</p>
                 <div class="grid grid-cols-2 gap-3">
                     {#each data.presensi as item}
-                        <form method="POST" action="?/markAttendance" use:enhance>
+                        <form method="POST" action="?/markAttendance" use:enhance={() => {
+                            return async ({ update, result }) => {
+                                await update();
+                                if (result.type === 'success') {
+                                    isScannerOpen = false;
+                                }
+                            };
+                        }}>
                             <input type="hidden" name="kelasId" value={item.kelasId} />
                             <button 
                                 type="submit"

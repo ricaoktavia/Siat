@@ -12,31 +12,19 @@
     } from 'lucide-svelte';
     import { fade, slide, scale } from 'svelte/transition';
     import { toast } from '$lib/stores/toast';
+    let { data } = $props();
 
     // State for selected day
     let activeDay = $state('Senin');
     const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
 
-    // Dummy Data
-    const scheduleData = {
-        'Senin': [
-            { id: 1, mk: 'Desain dan Analisis Algoritma', waktu: '08:00 - 10:30', ruang: 'Gedung A - R.201', dosen: 'Dr. Ir. Riza', tipe: 'Teori' },
-            { id: 2, mk: 'Pendidikan Pancasila', waktu: '13:00 - 14:40', ruang: 'Gedung B - R.105', dosen: 'Drs. Supriyanto', tipe: 'Teori' }
-        ],
-        'Selasa': [
-            { id: 3, mk: 'Pemrograman Web Lanjut', waktu: '13:00 - 15:30', ruang: 'Lab Komputer 3', dosen: 'Budi Raharjo, M.Kom', tipe: 'Praktikum' },
-            { id: 4, mk: 'Interaksi Manusia dan Komputer', waktu: '15:40 - 18:10', ruang: 'Lab Komputer 1', dosen: 'Siti Aminah, M.Ds.', tipe: 'Praktikum' }
-        ],
-        'Rabu': [
-            { id: 5, mk: 'Kecerdasan Buatan', waktu: '08:00 - 10:30', ruang: 'Gedung A - R.302', dosen: 'Dr. Ayu Lestari', tipe: 'Teori' }
-        ],
-        'Kamis': [
-            { id: 6, mk: 'Sistem Basis Data', waktu: '08:00 - 11:20', ruang: 'Lab Komputer 2', dosen: 'Prof. Hasanuddin', tipe: 'Teori' }
-        ],
-        'Jumat': [
-            { id: 7, mk: 'Jaringan Komputer', waktu: '13:00 - 15:30', ruang: 'Lab Komputer 4', dosen: 'Doni Pratama, M.T.', tipe: 'Praktikum' }
-        ]
-    };
+    let scheduleData = $derived(data.scheduleData || {
+        'Senin': [],
+        'Selasa': [],
+        'Rabu': [],
+        'Kamis': [],
+        'Jumat': []
+    });
 
     let currentSchedule = $derived(scheduleData[activeDay as keyof typeof scheduleData] || []);
 

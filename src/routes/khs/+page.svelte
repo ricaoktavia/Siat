@@ -22,42 +22,24 @@
     let activeTab = $state('khs');
 
     // KHS logic
-    let selectedSemester = $state('4');
+    let selectedSemester = $state(data.currentStudent?.semester?.toString() || '4');
     
-    const academicStats = {
-        ipk: 3.75,
-        ips: 3.82,
-        sksLulus: 84,
-        sksTotal: 144
-    };
+    let academicStats = $derived(data.academicStats);
 
     const semesterLabels: Record<string, string> = {
         '1': 'Semester 1 (Ganjil)',
         '2': 'Semester 2 (Genap)',
         '3': 'Semester 3 (Ganjil)',
         '4': 'Semester 4 (Genap)',
+        '5': 'Semester 5 (Ganjil)',
+        '6': 'Semester 6 (Genap)',
+        '7': 'Semester 7 (Ganjil)',
+        '8': 'Semester 8 (Genap)',
     };
 
-    const khsData = {
-        '4': [
-            { kode: 'MK401', nama: 'Metode Numerik', sks: 3, nilai: 'A', bobot: 4.00 },
-            { kode: 'MK402', nama: 'Rekayasa Perangkat Lunak', sks: 3, nilai: 'B', bobot: 3.00 }
-        ],
-        '3': [
-            { kode: 'MK301', nama: 'Arsitektur Komputer', sks: 3, nilai: 'B+', bobot: 3.3 },
-            { kode: 'MK302', nama: 'Sistem Operasi', sks: 3, nilai: 'A', bobot: 4.0 }
-        ],
-        '2': [
-            { kode: 'MK201', nama: 'Struktur Data', sks: 3, nilai: 'A', bobot: 4.0 },
-            { kode: 'MK202', nama: 'Algoritma Pemrograman', sks: 3, nilai: 'A', bobot: 4.0 }
-        ],
-        '1': [
-            { kode: 'MK101', nama: 'Matematika Dasar', sks: 3, nilai: 'A', bobot: 4.0 },
-            { kode: 'MK102', nama: 'Bahasa Inggris', sks: 2, nilai: 'A-', bobot: 3.7 }
-        ]
-    };
+    let khsData = $derived(data.khsData);
 
-    let currentKHS = $derived(khsData[selectedSemester as keyof typeof khsData] || []);
+    let currentKHS = $derived(khsData[selectedSemester] || []);
     let semesterSks = $derived(currentKHS.reduce((acc, curr) => acc + curr.sks, 0));
     let semesterIPS = $derived(() => {
         const total = currentKHS.reduce((acc, curr) => acc + curr.bobot * curr.sks, 0);

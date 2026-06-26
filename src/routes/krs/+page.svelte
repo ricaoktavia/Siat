@@ -85,7 +85,7 @@
 {/if}
 
 <div class="h-full flex w-full relative">
-	{#if data.uktStatus === 'BELUM_BAYAR'}
+	{#if !data.isUktLunas}
 		<div class="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6">
 			<div class="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center" transition:scale>
 				<div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -98,7 +98,7 @@
 				<div class="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-left">
 					<div>
 						<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tagihan Anda</p>
-						<p class="text-lg font-black text-slate-800">Rp 5.000.000</p>
+						<p class="text-lg font-black text-slate-800">Cek Tab Keuangan</p>
 					</div>
 					<a 
 						href="/keuangan" 

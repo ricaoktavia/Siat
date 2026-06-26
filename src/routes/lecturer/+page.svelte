@@ -12,18 +12,31 @@
     } from 'lucide-svelte';
     import { fade, slide } from 'svelte/transition';
 
-    // Mock lecturer stats
-    const stats = [
-        { label: 'Jumlah Mahasiswa', value: '42', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Menunggu Approval KRS', value: '8', icon: ClipboardCheck, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Mata Kuliah Diampu', value: '3', icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-        { label: 'Rata-rata IPK Mahasiswa', value: '3.42', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' }
-    ];
+    let { data } = $props();
 
-    const todaySchedule = [
-        { time: '08:00 - 10:30', subject: 'Desain dan Analisis Algoritma', room: 'Gedung A - R.201', class: 'TI-A' },
-        { time: '13:00 - 15:30', subject: 'Teori Graf', room: 'Gedung B - R.102', class: 'TI-C' }
-    ];
+    const stats = $derived([
+        { label: 'Jumlah Mahasiswa', value: data?.totalStudents || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Menunggu Approval KRS', value: data?.pendingKrsCount || 0, icon: ClipboardCheck, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Mata Kuliah Diampu', value: data?.totalCourses || 0, icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Rata-rata IPK Mahasiswa', value: '3.78', icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' }
+    ]);
+
+    const dayMap = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const todayName = dayMap[new Date().getDay()];
+
+    let todaySchedule = $derived(
+        (data.myClasses || [])
+            .filter(c => c.waktu.startsWith(todayName))
+            .map(c => {
+                const parts = c.waktu.split(',');
+                return {
+                    time: parts[1] ? parts[1].trim() : c.waktu,
+                    subject: c.mk,
+                    room: 'Gedung A - R.201', // mock data
+                    class: 'TI-A' // mock data
+                };
+            })
+    );
 </script>
 
 <svelte:head>
@@ -72,38 +85,29 @@
                 </div>
                 <div class="p-0">
                     <div class="divide-y divide-slate-50">
-                        <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer">
+                        {#each data.pendingKrs || [] as student}
+                        <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer" onclick={() => window.location.href='/lecturer/krs-review'}>
                             <div class="flex items-center space-x-4">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Budi&backgroundColor=e2e8f0" alt="Student" class="w-10 h-10 rounded-full">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={student.name}&backgroundColor=e2e8f0" alt="Student" class="w-10 h-10 rounded-full">
                                 <div>
-                                    <p class="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Budi Santoso</p>
-                                    <p class="text-xs text-slate-500">210101001 • Teknik Informatika</p>
+                                    <p class="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{student.name}</p>
+                                    <p class="text-xs text-slate-500">{student.nim} • {student.prodi}</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-4">
                                 <div class="text-right">
                                     <p class="text-[10px] font-bold text-slate-400 uppercase">Total SKS</p>
-                                    <p class="text-sm font-bold text-slate-700">21 SKS</p>
+                                    <p class="text-sm font-bold text-slate-700">{student.totalSks} SKS</p>
                                 </div>
                                 <ChevronRight class="w-5 h-5 text-slate-300 group-hover:text-blue-500" />
                             </div>
                         </div>
-                        <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group cursor-pointer">
-                            <div class="flex items-center space-x-4">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ani&backgroundColor=e2e8f0" alt="Student" class="w-10 h-10 rounded-full">
-                                <div>
-                                    <p class="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Ani Wijaya</p>
-                                    <p class="text-xs text-slate-500">210101045 • Teknik Informatika</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-4">
-                                <div class="text-right">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total SKS</p>
-                                    <p class="text-sm font-bold text-slate-700">24 SKS</p>
-                                </div>
-                                <ChevronRight class="w-5 h-5 text-slate-300 group-hover:text-blue-500" />
-                            </div>
+                        {/each}
+                        {#if !data.pendingKrs || data.pendingKrs.length === 0}
+                        <div class="p-6 text-center text-slate-500 text-sm">
+                            Tidak ada antrean review KRS.
                         </div>
+                        {/if}
                     </div>
                 </div>
             </div>
@@ -149,22 +153,30 @@
                     </h3>
                 </div>
                 <div class="p-5 space-y-4">
-                    {#each todaySchedule as item}
-                        <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative overflow-hidden group hover:border-blue-200 transition-colors">
-                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
-                            <p class="text-xs font-bold text-blue-600 mb-1">{item.time}</p>
-                            <h4 class="text-sm font-bold text-slate-800">{item.subject}</h4>
-                            <div class="flex items-center justify-between mt-3">
-                                <span class="text-xs text-slate-500 flex items-center">
-                                    <MapPin class="w-3.5 h-3.5 mr-1" />
-                                    {item.room}
-                                </span>
-                                <span class="text-[10px] font-black px-2 py-0.5 bg-slate-200 text-slate-700 rounded uppercase tracking-wider">
-                                    {item.class}
-                                </span>
+                    {#if todaySchedule.length > 0}
+                        {#each todaySchedule as item}
+                            <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/50 relative overflow-hidden group hover:border-blue-200 transition-colors">
+                                <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                                <p class="text-xs font-bold text-blue-600 mb-1">{item.time}</p>
+                                <h4 class="text-sm font-bold text-slate-800">{item.subject}</h4>
+                                <div class="flex items-center justify-between mt-3">
+                                    <span class="text-xs text-slate-500 flex items-center">
+                                        <MapPin class="w-3.5 h-3.5 mr-1" />
+                                        {item.room}
+                                    </span>
+                                    <span class="text-[10px] font-black px-2 py-0.5 bg-slate-200 text-slate-700 rounded uppercase tracking-wider">
+                                        {item.class}
+                                    </span>
+                                </div>
                             </div>
+                        {/each}
+                    {:else}
+                        <div class="py-8 flex flex-col items-center justify-center text-center">
+                            <Clock class="w-8 h-8 text-slate-300 mb-3" />
+                            <p class="text-sm font-bold text-slate-500">Tidak Ada Jadwal</p>
+                            <p class="text-xs text-slate-400 mt-1">Anda sedang tidak memiliki jadwal<br>mengajar untuk hari ini.</p>
                         </div>
-                    {/each}
+                    {/if}
                 </div>
             </div>
         </div>

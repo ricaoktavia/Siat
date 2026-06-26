@@ -184,7 +184,14 @@
                                 >
                                     Tolak
                                 </button>
-                                <form method="POST" action="?/approve" use:enhance>
+                                <form method="POST" action="?/approve" use:enhance={() => {
+                                    return async ({ update, result }) => {
+                                        await update();
+                                        if (result.type === 'success') {
+                                            selectedStudent = data.submittedStudents.find(s => s.nim === selectedStudent?.nim) || null;
+                                        }
+                                    };
+                                }}>
                                     <input type="hidden" name="nim" value={selectedStudent?.nim} />
                                     <button 
                                         type="submit"

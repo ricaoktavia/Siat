@@ -13,27 +13,26 @@
 		Sparkles
 	} from 'lucide-svelte';
 
-	// Dummy Data
+	let { data } = $props();
+
 	let student = {
-		name: 'Budi Santoso',
-		nim: '210101001',
-		prodi: 'Teknik Informatika',
-		semester: 5,
+		name: data.user?.name || 'Mahasiswa',
+		nim: data.studentInfo?.nim || '-',
+		prodi: data.studentInfo?.prodi || '-',
+		semester: data.studentInfo?.semester || 1,
 		status: 'Aktif'
 	};
 
 	let stats = {
-		ipk: 3.75,
-		sksTempuh: 84,
-		sksSisa: 60,
+		ipk: parseFloat(data.studentInfo?.ipk || '3.75'),
+		sksTempuh: data.totalSks || 0,
+		sksSisa: Math.max(0, 144 - (data.totalSks || 0)),
 		targetLulus: 'Juli 2028'
 	};
 
-	let todayClasses = [
-		{ id: 1, nama: 'Desain dan Analisis Algoritma', waktu: '08:00 - 10:30', ruang: 'Gedung A - R.201', dosen: 'Dr. Ir. Riza', status: 'Selesai' },
-		{ id: 2, nama: 'Kecerdasan Buatan', waktu: '13:00 - 15:30', ruang: 'Lab Komputer 3', dosen: 'Dr. Ayu Lestari', status: 'Berlangsung' },
-		{ id: 3, nama: 'Pendidikan Pancasila', waktu: '16:00 - 17:40', ruang: 'Gedung B - R.105', dosen: 'Drs. Supriyanto', status: 'Menunggu' }
-	];
+	let todayClasses = $derived(data.classes?.length > 0 ? data.classes : [
+		{ id: 1, nama: 'Belum ada jadwal (KRS belum disetujui)', waktu: '-', ruang: '-', dosen: '-', status: '-' }
+	]);
 
 	let announcements = [
 		{ id: 1, title: 'Batas Akhir Pembayaran UKT Semester Ganjil', date: '10 Ags 2026', type: 'Penting' },
